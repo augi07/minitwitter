@@ -3,70 +3,103 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Post Management</title>
+  <title>Minitwitter</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gray-100">
   <div class="container mx-auto p-6">
-    <h1 class="text-3xl font-bold mb-6">Post Management</h1>
+    <h1 class="text-3xl font-bold mb-6">Minitwitter</h1>
 
-    <!-- Form zum Erstellen eines Beitrags -->
+    <!-- Form to Create a Post -->
     <form id="createPostForm" class="mb-4">
       <textarea id="postContent" class="w-full p-2 border rounded" placeholder="Write your post..."></textarea>
       <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded mt-2">Create Post</button>
     </form>
 
-    <!-- Posts-Liste -->
+    <!-- Posts List -->
     <div id="postsContainer" class="space-y-4"></div>
   </div>
 
   <script>
-    // Basis-URL für die API
     const API_BASE_URL = 'http://localhost:4200';
 
-    // Prüfe, ob der Benutzer eingeloggt ist und ein Token besitzt
-    document.addEventListener('DOMContentLoaded', async () => {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        alert('You are not logged in!');
-        window.location.href = '/login.html';
-        return;
-      }
-
+    function isTokenExpired(token) {
       try {
-        // API-Aufruf, um Beiträge zu laden
-        const response = await fetch(`${API_BASE_URL}/posts`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
+        const payload = JSON.parse(atob(token.split('.')[1])); // Payload dekodieren
+        console.log('Token Payload:', payload); // Payload anzeigen
+        const now = Date.now() / 1000; // Aktuelle Zeit in Sekunden
+        console.log('Current Time:', now);
+        console.log('Token Expiration Time:', payload.exp);
+        return payload.exp < now; // Rückgabe: Ist das Token abgelaufen?
+      } catch (error) {
+        console.error('Invalid Token:', error.message);
+        return true; // Falls Token ungültig ist
+      }
+    }
 
-        if (response.ok) {
-          const posts = await response.json();
-          renderPosts(posts); // Beiträge auf der Seite anzeigen
-        } else {
-          alert('Failed to load posts. Please login again.');
-          window.location.href = '/login.html';
-        }
-      } catch (err) {
-        console.error('Error loading posts:', err);
-        alert('An error occurred. Please try again later.');
+
+    document.addEventListener('DOMContentLoaded', () => {
+      const token = localStorage.getItem('token');
+      if (!token || isTokenExpired(token)) {
+        alert('Session expired. Please log in again.');
+        window.location.href = '/login.html';
+      } else {
+        loadPosts();
       }
     });
 
-    // Beiträge auf der Seite rendern
+    // Load Posts
+    async function loadPosts() {
+      const token = localStorage.getItem('token');
+      try {
+        const response = await fetch(`${API_BASE_URL}/posts`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        if (!response.ok) {
+          const error = await response.json();
+          alert(`Error: ${error.message}`);
+          return;
+        }
+
+        const posts = await response.json();
+        renderPosts(posts);
+      } catch (err) {
+        console.error('Error fetching posts:', err);
+        alert('An error occurred while loading posts.');
+      }
+    }
+
+    // Render Posts
     function renderPosts(posts) {
+      console.log('Posts-Daten:', posts);
       const postsContainer = document.getElementById('postsContainer');
       postsContainer.innerHTML = posts.map(post => `
         <div class="bg-white p-4 rounded shadow">
-          <p class="mb-2">${post.content}</p>
-          <button onclick="deletePost(${post.id})" class="bg-red-500 text-white px-2 py-1 rounded">Delete</button>
-          <button onclick="editPost(${post.id}, '${post.content}')" class="bg-green-500 text-white px-2 py-1 rounded ml-2">Edit</button>
+          <p class="mb-2"><strong>${post.username}</strong>: ${post.content}</p>
+          <p class="text-gray-500 text-sm">${new Date(post.created_at).toLocaleString()}</p>
+          <button onclick="deletePost(${post.id})" class="bg-red-500 text-white px-2 py-1 rounded mt-2">Delete</button>
+          <button onclick="editPost(${post.id}, '${post.content}')" class="bg-green-500 text-white px-2 py-1 rounded ml-2 mt-2">Edit</button>
+
+          <!-- Comment Section -->
+          <div class="mt-4">
+            <h3 class="text-lg font-bold mb-2">Comments</h3>
+            <div id="commentsContainer-${post.id}" class="space-y-2">
+              <p class="text-gray-500">Loading comments...</p>
+            </div>
+            <form onsubmit="createComment(event, ${post.id})" class="mt-2">
+              <textarea id="commentContent-${post.id}" class="w-full p-2 border rounded" placeholder="Write a comment..."></textarea>
+              <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded mt-2">Add Comment</button>
+            </form>
+          </div>
         </div>
       `).join('');
+      console.log('Gerenderte Posts:', postsContainer.innerHTML);
+
+      posts.forEach(post => loadComments(post.id));
     }
 
-    // Beitrag erstellen
+    // Create Post
     document.getElementById('createPostForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       const content = document.getElementById('postContent').value;
@@ -76,8 +109,7 @@
         return;
       }
 
-      const token = localStorage.getItem('token'); // Token abrufen
-
+      const token = localStorage.getItem('token');
       try {
         const response = await fetch(`${API_BASE_URL}/posts`, {
           method: 'POST',
@@ -89,51 +121,25 @@
         });
 
         if (response.ok) {
-          alert('Post created successfully!');
-          document.getElementById('postContent').value = ''; // Textfeld leeren
-          loadPosts(); // Beiträge neu laden
+          document.getElementById('postContent').value = '';
+          loadPosts();
         } else {
-          alert('Failed to create post. Please try again.');
+          const error = await response.json();
+          alert(`Failed to create post: ${error.message}`);
         }
       } catch (err) {
         console.error('Error creating post:', err);
-        alert('An error occurred while creating the post.');
       }
     });
 
-    // Beitrag löschen
-    async function deletePost(id) {
-      const token = localStorage.getItem('token');
-
-      try {
-        const response = await fetch(`${API_BASE_URL}/posts/${id}`, {
-          method: 'DELETE',
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-
-        if (response.ok) {
-          alert('Post deleted successfully!');
-          loadPosts(); // Beiträge neu laden
-        } else {
-          alert('Failed to delete post. Please try again.');
-        }
-      } catch (err) {
-        console.error('Error deleting post:', err);
-        alert('An error occurred while deleting the post.');
-      }
-    }
-
-    // Beitrag bearbeiten
-    async function editPost(id, oldContent) {
+    // Edit Post
+    async function editPost(postId, oldContent) {
       const newContent = prompt('Edit your post:', oldContent);
       if (!newContent) return;
 
       const token = localStorage.getItem('token');
-
       try {
-        const response = await fetch(`${API_BASE_URL}/posts/${id}`, {
+        const response = await fetch(`${API_BASE_URL}/posts/${postId}`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
@@ -143,38 +149,158 @@
         });
 
         if (response.ok) {
-          alert('Post updated successfully!');
-          loadPosts(); // Beiträge neu laden
+          loadPosts();
         } else {
-          alert('Failed to update post. Please try again.');
+          const error = await response.json();
+          alert(`Failed to update post: ${error.message}`);
         }
       } catch (err) {
         console.error('Error updating post:', err);
-        alert('An error occurred while updating the post.');
       }
     }
 
-    // Beiträge neu laden
-    async function loadPosts() {
+    // Delete Post
+    async function deletePost(postId) {
       const token = localStorage.getItem('token');
-
       try {
-        const response = await fetch(`${API_BASE_URL}/posts`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+        const response = await fetch(`${API_BASE_URL}/posts/${postId}`, {
+          method: 'DELETE',
+          headers: { Authorization: `Bearer ${token}` },
         });
 
         if (response.ok) {
-          const posts = await response.json();
-          renderPosts(posts);
+          loadPosts();
         } else {
-          alert('Failed to load posts. Please login again.');
-          window.location.href = '/login.html';
+          const error = await response.json();
+          alert(`Failed to delete post: ${error.message}`);
         }
       } catch (err) {
-        console.error('Error loading posts:', err);
-        alert('An error occurred. Please try again later.');
+        console.error('Error deleting post:', err);
+      }
+    }
+
+    // Load Comments
+    async function loadComments(postId) {
+      const token = localStorage.getItem('token');
+      try {
+        const response = await fetch(`${API_BASE_URL}/posts/${postId}/comments`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        if (response.ok) {
+          const comments = await response.json();
+          renderComments(postId, comments);
+        } else {
+          console.error(`Failed to load comments for postId ${postId}:`, await response.text());
+        }
+      } catch (err) {
+        console.error('Error loading comments:', err);
+      }
+    }
+
+    // Render Comments
+    function renderComments(postId, comments) {
+      const commentsContainer = document.getElementById(`commentsContainer-${postId}`);
+      if (!comments || comments.length === 0) {
+        commentsContainer.innerHTML = `<p class="text-gray-500">No comments yet.</p>`;
+        return;
+      }
+
+      commentsContainer.innerHTML = comments.map(comment => `
+        <div class="bg-gray-100 p-2 rounded shadow">
+          <p class="mb-2"><strong>${comment.username}</strong>: ${comment.content}</p>
+          <p class="text-gray-500 text-sm">${new Date(comment.created_at).toLocaleString()}</p>
+          <button onclick="deleteComment(${postId}, ${comment.id})" class="bg-red-500 text-white px-2 py-1 rounded">Delete</button>
+          <button onclick="editComment(${postId}, ${comment.id}, '${comment.content}')" class="bg-green-500 text-white px-2 py-1 rounded ml-2">Edit</button>
+        </div>
+      `).join('');
+    }
+
+    // Create Comment
+      window.createComment = async function (event, postId) {
+        event.preventDefault();
+        console.log('createComment aufgerufen mit postId:', postId);
+        const content = document.getElementById(`commentContent-${postId}`).value;
+
+        if (!content) {
+            alert('Comment content cannot be empty!');
+            return;
+        }
+
+        const token = localStorage.getItem('token');
+        console.log('Kommentar-Inhalt:', content);
+        console.log('Token:', token);
+
+        try {
+            const response = await fetch(`${API_BASE_URL}/posts/${postId}/comments`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({ content }),
+            });
+
+            console.log('Response:', response);
+
+            if (response.ok) {
+                document.getElementById(`commentContent-${postId}`).value = '';
+                loadComments(postId);
+            } else {
+                const error = await response.json();
+                alert(`Failed to create comment: ${error.message}`);
+            }
+        } catch (err) {
+            console.error('Error creating comment:', err);
+        }
+      };
+
+
+
+    // Edit Comment
+    async function editComment(postId, commentId, oldContent) {
+      const newContent = prompt('Edit your comment:', oldContent);
+      if (!newContent) return;
+
+      const token = localStorage.getItem('token');
+      try {
+        const response = await fetch(`${API_BASE_URL}/posts/${postId}/comments/${commentId}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ content: newContent }),
+        });
+
+        if (response.ok) {
+          loadComments(postId);
+        } else {
+          const error = await response.json();
+          alert(`Failed to update comment: ${error.message}`);
+        }
+      } catch (err) {
+        console.error('Error updating comment:', err);
+      }
+    }
+
+    // Delete Comment
+    async function deleteComment(postId, commentId) {
+      const token = localStorage.getItem('token');
+      try {
+        const response = await fetch(`${API_BASE_URL}/posts/${postId}/comments/${commentId}`, {
+          method: 'DELETE',
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        if (response.ok) {
+          loadComments(postId);
+        } else {
+          const error = await response.json();
+          alert(`Failed to delete comment: ${error.message}`);
+        }
+      } catch (err) {
+        console.error('Error deleting comment:', err);
       }
     }
   </script>

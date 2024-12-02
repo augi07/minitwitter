@@ -1,4 +1,5 @@
 import * as express from 'express';
+import { Request } from 'express';
 
 declare global {
   namespace Express {
@@ -9,4 +10,11 @@ declare global {
       };
     }
   }
+}
+
+export interface AuthenticatedRequest extends Request {
+  user?: {
+      id: number;
+      username: string;
+  };
 }
