@@ -5,6 +5,8 @@ import express, { Express, Request, Response } from 'express'
 import { API } from './api'
 import http from 'http'
 import { resolve, dirname } from 'path'
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { Database } from './database'
 import bodyParser from 'body-parser'
 
@@ -46,10 +48,20 @@ class Backend {
 
   // Methods
   private setupStaticFiles(): void {
-    this._app.use(express.static('client'))
+    // __dirname-Ersatz für ES-Module
+    const __filename = fileURLToPath(import.meta.url); // Ermittelt den Dateipfad
+    const __dirname = path.dirname(__filename); // Verzeichnis des aktuellen Moduls
+  
+    const staticPath = path.join(__dirname, '../client'); // Pfad zu den statischen Dateien
+    console.log(`Serving static files from: ${staticPath}`); // Debugging
+  
+    this._app.use(express.static(staticPath)); // Statische Dateien bereitstellen
   }
 
   private setupRoutes(): void {
+    const __filename = fileURLToPath(import.meta.url);
+    const __dirname = path.dirname(__filename);
+
     this._app.get('/', (req: Request, res: Response) => {
         const __dirname = resolve(dirname(''));
         res.sendFile(__dirname + '/client/index.html');
@@ -64,6 +76,10 @@ class Backend {
     this._app.get('/register', (req: Request, res: Response) => {
         const __dirname = resolve(dirname(''));
         res.sendFile(__dirname + '/client/register.html');
+    });
+
+    this._app.get('/posts.html', (req: Request, res: Response) => {
+      res.sendFile(path.join(__dirname, '../client/posts.html'));
     });
   }
 

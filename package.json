@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "concurrently \"yarn dev:server\" \"yarn dev:client\"",
     "dev:server": "vite",
-    "dev:client": "livereload client/ -p 35729 -e html,js,css",
+    "dev:client": "livereload client/ -p 4200 -e html,js,css",
     "build": "vite build",
     "start": "NODE_ENV=production node dist/index.js",
     "lint": "eslint --ext .ts server/",

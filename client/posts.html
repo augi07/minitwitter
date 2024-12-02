@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Post Management</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100">
+  <div class="container mx-auto p-6">
+    <h1 class="text-3xl font-bold mb-6">Post Management</h1>
+
+    <!-- Form zum Erstellen eines Beitrags -->
+    <form id="createPostForm" class="mb-4">
+      <textarea id="postContent" class="w-full p-2 border rounded" placeholder="Write your post..."></textarea>
+      <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded mt-2">Create Post</button>
+    </form>
+
+    <!-- Posts-Liste -->
+    <div id="postsContainer" class="space-y-4"></div>
+  </div>
+
+  <script>
+    // Basis-URL für die API
+    const API_BASE_URL = 'http://localhost:4200';
+
+    // Prüfe, ob der Benutzer eingeloggt ist und ein Token besitzt
+    document.addEventListener('DOMContentLoaded', async () => {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        alert('You are not logged in!');
+        window.location.href = '/login.html';
+        return;
+      }
+
+      try {
+        // API-Aufruf, um Beiträge zu laden
+        const response = await fetch(`${API_BASE_URL}/posts`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (response.ok) {
+          const posts = await response.json();
+          renderPosts(posts); // Beiträge auf der Seite anzeigen
+        } else {
+          alert('Failed to load posts. Please login again.');
+          window.location.href = '/login.html';
+        }
+      } catch (err) {
+        console.error('Error loading posts:', err);
+        alert('An error occurred. Please try again later.');
+      }
+    });
+
+    // Beiträge auf der Seite rendern
+    function renderPosts(posts) {
+      const postsContainer = document.getElementById('postsContainer');
+      postsContainer.innerHTML = posts.map(post => `
+        <div class="bg-white p-4 rounded shadow">
+          <p class="mb-2">${post.content}</p>
+          <button onclick="deletePost(${post.id})" class="bg-red-500 text-white px-2 py-1 rounded">Delete</button>
+          <button onclick="editPost(${post.id}, '${post.content}')" class="bg-green-500 text-white px-2 py-1 rounded ml-2">Edit</button>
+        </div>
+      `).join('');
+    }
+
+    // Beitrag erstellen
+    document.getElementById('createPostForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const content = document.getElementById('postContent').value;
+
+      if (!content) {
+        alert('Post content cannot be empty!');
+        return;
+      }
+
+      const token = localStorage.getItem('token'); // Token abrufen
+
+      try {
+        const response = await fetch(`${API_BASE_URL}/posts`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ content }),
+        });
+
+        if (response.ok) {
+          alert('Post created successfully!');
+          document.getElementById('postContent').value = ''; // Textfeld leeren
+          loadPosts(); // Beiträge neu laden
+        } else {
+          alert('Failed to create post. Please try again.');
+        }
+      } catch (err) {
+        console.error('Error creating post:', err);
+        alert('An error occurred while creating the post.');
+      }
+    });
+
+    // Beitrag löschen
+    async function deletePost(id) {
+      const token = localStorage.getItem('token');
+
+      try {
+        const response = await fetch(`${API_BASE_URL}/posts/${id}`, {
+          method: 'DELETE',
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (response.ok) {
+          alert('Post deleted successfully!');
+          loadPosts(); // Beiträge neu laden
+        } else {
+          alert('Failed to delete post. Please try again.');
+        }
+      } catch (err) {
+        console.error('Error deleting post:', err);
+        alert('An error occurred while deleting the post.');
+      }
+    }
+
+    // Beitrag bearbeiten
+    async function editPost(id, oldContent) {
+      const newContent = prompt('Edit your post:', oldContent);
+      if (!newContent) return;
+
+      const token = localStorage.getItem('token');
+
+      try {
+        const response = await fetch(`${API_BASE_URL}/posts/${id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ content: newContent }),
+        });
+
+        if (response.ok) {
+          alert('Post updated successfully!');
+          loadPosts(); // Beiträge neu laden
+        } else {
+          alert('Failed to update post. Please try again.');
+        }
+      } catch (err) {
+        console.error('Error updating post:', err);
+        alert('An error occurred while updating the post.');
+      }
+    }
+
+    // Beiträge neu laden
+    async function loadPosts() {
+      const token = localStorage.getItem('token');
+
+      try {
+        const response = await fetch(`${API_BASE_URL}/posts`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (response.ok) {
+          const posts = await response.json();
+          renderPosts(posts);
+        } else {
+          alert('Failed to load posts. Please login again.');
+          window.location.href = '/login.html';
+        }
+      } catch (err) {
+        console.error('Error loading posts:', err);
+        alert('An error occurred. Please try again later.');
+      }
+    }
+  </script>
+</body>
+</html>

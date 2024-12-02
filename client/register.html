@@ -25,6 +25,8 @@
     </p>
   </div>
   <script>
+    const API_BASE_URL = 'http://localhost:4200'; // Serveradresse
+
     document.getElementById('registerForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       const username = document.getElementById('username').value;

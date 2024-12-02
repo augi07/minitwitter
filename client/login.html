@@ -1,50 +1,80 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Login</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-</head>
-<body class="bg-gray-100 flex items-center justify-center min-h-screen">
-  <div class="bg-white p-6 rounded-lg shadow-md w-96">
-    <h2 class="text-2xl font-bold mb-4 text-center">Login</h2>
-    <form id="loginForm">
-      <div class="mb-4">
-        <label for="username" class="block text-gray-700">Username</label>
-        <input type="text" id="username" name="username" class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400" required>
-      </div>
-      <div class="mb-4">
-        <label for="password" class="block text-gray-700">Password</label>
-        <input type="password" id="password" name="password" class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400" required>
-      </div>
-      <button type="submit" class="w-full bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600">Login</button>
-    </form>
-    <p class="text-sm text-center mt-4">
-      No account? <a href="register.html" class="text-blue-500">Register here</a>
-    </p>
-  </div>
-  <script>
-    document.getElementById('loginForm').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const username = document.getElementById('username').value;
-    const password = document.getElementById('password').value;
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Login</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+  <body class="bg-gray-100 flex items-center justify-center min-h-screen">
+    <div class="bg-white p-6 rounded-lg shadow-md w-96">
+      <h2 class="text-2xl font-bold mb-4 text-center">Login</h2>
+      <form id="loginForm">
+        <div class="mb-4">
+          <label for="username" class="block text-gray-700">Username</label>
+          <input
+            type="text"
+            id="username"
+            name="username"
+            class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400"
+            required
+          />
+        </div>
+        <div class="mb-4">
+          <label for="password" class="block text-gray-700">Password</label>
+          <input
+            type="password"
+            id="password"
+            name="password"
+            class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400"
+            required
+          />
+        </div>
+        <button
+          type="submit"
+          class="w-full bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600"
+        >
+          Login
+        </button>
+      </form>
+      <p class="text-sm text-center mt-4">
+        No account?
+        <a href="register.html" class="text-blue-500">Register here</a>
+      </p>
+    </div>
+    <script>
+      const API_BASE_URL = 'http://localhost:4200' // Serveradresse
 
-    const response = await fetch('/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password })
-    });
+      document
+        .getElementById('loginForm')
+        .addEventListener('submit', async (e) => {
+          e.preventDefault()
 
-    if (response.ok) {
-        const data = await response.json();
-        localStorage.setItem('token', data.token); // Token speichern
-        alert('Login successful');
-        window.location.href = '/'; // Weiterleitung nach Login
-    } else {
-        alert('Login failed');
-    }
-    });
-  </script>
-</body>
+          const username = document.getElementById('username').value
+          const password = document.getElementById('password').value
+
+          try {
+            const response = await fetch('http://localhost:4200/login', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ username, password }),
+            })
+
+            if (response.ok) {
+              const data = await response.json()
+              localStorage.setItem('token', data.token) // Speichert das Token
+              alert('Login successful! Redirecting...')
+              window.location.href = 'posts.html' // Weiterleitung
+            } else {
+              alert('Login failed: Invalid username or password')
+            }
+          } catch (err) {
+            console.error('Login error:', err)
+            alert('An error occurred. Please check the console for details.')
+          }
+        })
+    </script>
+  </body>
 </html>
