@@ -46,37 +46,6 @@ async function loadPosts() {
   }
 }
 
-// Render Posts
-function renderPosts(posts) {
-  const postsContainer = document.getElementById('postsContainer');
-  postsContainer.innerHTML = posts.map(post => `
-    <div class="bg-white p-4 rounded shadow">
-      <div class="flex justify-between items-center mb-2">
-        <strong>${post.username}</strong>
-        <small>${new Date(post.created_at).toLocaleString()}</small>
-      </div>
-      <p>${post.content}</p>
-      <div class="mt-4">
-        <button onclick="likePost(${post.id})" class="bg-green-500 text-white px-2 py-1 rounded">Like</button>
-        <button onclick="editPost(${post.id}, '${post.content}')" class="bg-yellow-500 text-white px-2 py-1 rounded ml-2">Edit</button>
-        <button onclick="deletePost(${post.id})" class="bg-red-500 text-white px-2 py-1 rounded ml-2">Delete</button>
-      </div>
-
-      <!-- Comment Section -->
-      <div class="mt-6">
-        <h3 class="text-lg font-bold mb-2">Comments</h3>
-        <div id="commentsContainer-${post.id}" class="space-y-2"></div>
-        <form onsubmit="createComment(event, ${post.id})" class="mt-2">
-          <textarea id="commentContent-${post.id}" class="w-full p-2 border rounded" placeholder="Write a comment..."></textarea>
-          <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded mt-2">Add Comment</button>
-        </form>
-      </div>
-    </div>
-  `).join('');
-
-  posts.forEach(post => loadComments(post.id));
-}
-
 // Create Post
 async function createPost(event) {
   event.preventDefault();
@@ -100,6 +69,7 @@ async function createPost(event) {
 
     if (response.ok) {
       document.getElementById('postContent').value = '';
+      // Neuladen der Posts nach erfolgreichem Erstellen
       loadPosts();
     } else {
       throw new Error(await response.text());
@@ -107,6 +77,91 @@ async function createPost(event) {
   } catch (err) {
     console.error('Error creating post:', err);
     alert('Failed to create post.');
+  }
+}
+
+// Render Posts
+function renderPosts(posts) {
+  const postsContainer = document.getElementById('postsContainer');
+  postsContainer.innerHTML = posts.map(post => `
+    <div class="bg-white p-4 rounded shadow">
+      <div class="flex justify-between items-center mb-2">
+        <strong>${post.username}</strong>
+        <small>${new Date(post.created_at).toLocaleString()}</small>
+      </div>
+      <p>${post.content}</p>
+      <div class="mt-4">
+        <button onclick="editPost(${post.id}, '${post.content}')" class="bg-yellow-500 text-white px-2 py-1 rounded ml-2">Edit</button>
+        <button onclick="deletePost(${post.id})" class="bg-red-500 text-white px-2 py-1 rounded ml-2">Delete</button>
+      </div>
+
+      <!-- Comment Section -->
+      <div class="mt-6">
+        <h3 class="text-lg font-bold mb-2">Comments</h3>
+        <div id="commentsContainer-${post.id}" class="space-y-2"></div>
+        <form onsubmit="createComment(event, ${post.id})" class="mt-2">
+          <textarea id="commentContent-${post.id}" class="w-full p-2 border rounded" placeholder="Write a comment..."></textarea>
+          <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded mt-2">Add Comment</button>
+        </form>
+      </div>
+    </div>
+  `).join('');
+
+  // Lade Kommentare für jeden Post
+  posts.forEach(post => loadComments(post.id));
+}
+
+// Edit Post
+async function editPost(postId, oldContent) {
+  const newContent = prompt('Edit your post:', oldContent);
+  if (!newContent) {
+    return alert('Post content cannot be empty!');
+  }
+
+  const token = localStorage.getItem('token');
+  try {
+    const response = await fetch(`${API_BASE_URL}/posts/${postId}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ content: newContent }),
+    });
+
+    if (response.ok) {
+      alert('Post updated successfully!');
+      loadPosts();
+    } else {
+      throw new Error(await response.text());
+    }
+  } catch (err) {
+    console.error('Error updating post:', err);
+    alert('Failed to update post.');
+  }
+}
+
+// Delete Post
+async function deletePost(postId) {
+  const confirmation = confirm('Are you sure you want to delete this post?');
+  if (!confirmation) return;
+
+  const token = localStorage.getItem('token');
+  try {
+    const response = await fetch(`${API_BASE_URL}/posts/${postId}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    if (response.ok) {
+      alert('Post deleted successfully!');
+      loadPosts();
+    } else {
+      throw new Error(await response.text());
+    }
+  } catch (err) {
+    console.error('Error deleting post:', err);
+    alert('Failed to delete post.');
   }
 }
 
