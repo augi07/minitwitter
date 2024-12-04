@@ -40,7 +40,7 @@ export class API {
   }
 
   // --- Utility Functions ---
-  private validateId(id: string | number | undefined): boolean {
+  private validateId(id: number | string ): boolean {
     const numId = Number(id); // Konvertiere in eine Zahl
     return !isNaN(numId) && numId > 0;
   }  
@@ -142,7 +142,7 @@ export class API {
 
     try {
         const query = `
-          INSERT INTO comments (tweet_id, user_id, content, created_at)
+          INSERT INTO comments (post_id, user_id, content, created_at)
           VALUES (?, ?, ?, NOW())
         `;
         const result = await this.db.executeSQL<ResultSetHeader>(query, [postId, req.user?.id, content]);
@@ -169,7 +169,7 @@ export class API {
         SELECT c.id, c.content, c.created_at, u.username
         FROM comments c
         INNER JOIN users u ON c.user_id = u.id
-        WHERE c.tweet_id = ?
+        WHERE c.post_id = ?
         ORDER BY c.created_at ASC
       `;
       const rows = await this.db.executeSQL<RowDataPacket[]>(query, [postId]);

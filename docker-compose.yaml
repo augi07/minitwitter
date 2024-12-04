@@ -25,5 +25,24 @@ services:
     ports:
       - 9200:80
 
+  app:
+    image: node:18
+    working_dir: /app
+    volumes:
+      - .:/app
+      - /app/node_modules
+    ports:
+      - 4200:4200
+    command: sh -c "yarn install && yarn dev"
+    environment:
+      - NODE_ENV=development
+      - DB_HOST=mariadb
+      - DB_NAME=minitwitter
+      - DB_USER=minitwitter
+      - DB_PASSWORD=supersecret123
+      - JWT_SECRET=supersecretkey
+    depends_on:
+      - mariadb
+
 volumes:
   m223_project_mariadb:
