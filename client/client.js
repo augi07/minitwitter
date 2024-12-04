@@ -19,7 +19,7 @@ if (!token) {
 }
 
 
-/*
+
 if (location.host.includes('localhost')) {
   // Load livereload script if we are on localhost
   document.write(
@@ -29,7 +29,7 @@ if (location.host.includes('localhost')) {
       'script>'
   )
 }
-
+/*
 // Verify token
 const token = localStorage.getItem('token');
 
