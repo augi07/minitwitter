@@ -65,7 +65,7 @@
             if (response.ok) {
               const data = await response.json()
               localStorage.setItem('token', data.token) // Speichert das Token
-              alert('Login successful! Redirecting...')
+              //alert('Login successful! Redirecting...')
               window.location.href = 'posts.html' // Weiterleitung
             } else {
               alert('Login failed: Invalid username or password')

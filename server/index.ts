@@ -54,8 +54,12 @@ class Backend {
   
     const staticPath = path.join(__dirname, '../client'); // Pfad zu den statischen Dateien
     console.log(`Serving static files from: ${staticPath}`); // Debugging
-  
     this._app.use(express.static(staticPath)); // Statische Dateien bereitstellen
+
+    // Statisches Verzeichnis für public (für Icons)
+    const publicPath = path.join(__dirname, '../client/public');
+    console.log(`Serving public files from: ${publicPath}`);
+    this._app.use(express.static(publicPath)); // Für SVGs
   }
 
   private setupRoutes(): void {

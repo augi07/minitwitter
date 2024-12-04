@@ -52,7 +52,7 @@ async function createPost(event) {
   const content = document.getElementById('postContent').value;
 
   if (!content) {
-    alert('Post content cannot be empty!');
+    //alert('Post content cannot be empty!');
     return;
   }
 
@@ -90,16 +90,26 @@ function renderPosts(posts) {
         <small>${new Date(post.created_at).toLocaleString()}</small>
       </div>
       <p>${post.content}</p>
-      <div class="mt-4">
-        <button onclick="editPost(${post.id}, '${post.content}')" class="bg-yellow-500 text-white px-2 py-1 rounded ml-2">Edit</button>
-        <button onclick="deletePost(${post.id})" class="bg-red-500 text-white px-2 py-1 rounded ml-2">Delete</button>
+      <div class="mt-4 flex items-center space-x-4">
+        <img src="like-icon.svg" alt="Like" class="w-6 h-6 cursor-pointer" onclick="likePost(${post.id})" />
+        <span id="like-count-${post.id}">${post.likes || 0} likes</span>
+        <img src="dislike-icon.svg" alt="Dislike" class="w-6 h-6 cursor-pointer" onclick="dislikePost(${post.id})" />
+        <span id="dislike-count-${post.id}">${post.dislikes || 0} dislikes</span>
       </div>
-
-      <!-- Comment Section -->
+      <div class="mt-4 flex items-center space-x-4">
+        <button onclick="editPost(${post.id}, '${post.content}')" 
+                class="bg-yellow-500 text-white px-4 py-2 rounded">
+          Edit
+        </button>
+        <button onclick="deletePost(${post.id})" 
+                class="bg-red-500 text-white px-4 py-2 rounded">
+          Delete
+        </button>
+      </div>
       <div class="mt-6">
         <h3 class="text-lg font-bold mb-2">Comments</h3>
         <div id="commentsContainer-${post.id}" class="space-y-2"></div>
-        <form onsubmit="createComment(event, ${post.id})" class="mt-2">
+        <form onclick="createComment(event, ${post.id})" class="mt-2">
           <textarea id="commentContent-${post.id}" class="w-full p-2 border rounded" placeholder="Write a comment..."></textarea>
           <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded mt-2">Add Comment</button>
         </form>
@@ -115,7 +125,7 @@ function renderPosts(posts) {
 async function editPost(postId, oldContent) {
   const newContent = prompt('Edit your post:', oldContent);
   if (!newContent) {
-    return alert('Post content cannot be empty!');
+    return //alert('Post content cannot be empty!');
   }
 
   const token = localStorage.getItem('token');
@@ -130,7 +140,7 @@ async function editPost(postId, oldContent) {
     });
 
     if (response.ok) {
-      alert('Post updated successfully!');
+      //alert('Post updated successfully!');
       loadPosts();
     } else {
       throw new Error(await response.text());
@@ -154,7 +164,7 @@ async function deletePost(postId) {
     });
 
     if (response.ok) {
-      alert('Post deleted successfully!');
+      //alert('Post deleted successfully!');
       loadPosts();
     } else {
       throw new Error(await response.text());
@@ -187,6 +197,11 @@ async function loadComments(postId) {
 // Render Comments
 function renderComments(postId, comments) {
   const commentsContainer = document.getElementById(`commentsContainer-${postId}`);
+  if (!commentsContainer) {
+    console.error(`Comments container for postId ${postId} not found.`);
+    return; // Abbrechen, wenn das Element nicht existiert
+  }
+
   if (!comments || comments.length === 0) {
     commentsContainer.innerHTML = `<p class="text-gray-500">No comments yet.</p>`;
     return;
@@ -279,5 +294,42 @@ async function deleteComment(postId, commentId) {
   } catch (err) {
     console.error('Error deleting comment:', err);
     alert('Failed to delete comment.');
+  }
+}
+
+// Like eines Posts
+async function likePost(postId) {
+  try {
+    const response = await fetch(`${API_BASE_URL}/posts/${postId}/like`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+    });
+    if (response.ok) {
+      const data = await response.json();
+      document.getElementById(`like-count-${postId}`).innerText = `${data.likes || 0} likes`;
+      document.getElementById(`dislike-count-${postId}`).innerText = `${data.dislikes || 0} dislikes`;
+    } else {
+      throw new Error('Failed to like post');
+    }
+  } catch (error) {
+    console.error('Error liking post:', error);
+  }
+}
+
+async function dislikePost(postId) {
+  try {
+    const response = await fetch(`${API_BASE_URL}/posts/${postId}/dislike`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+    });
+    if (response.ok) {
+      const data = await response.json();
+      document.getElementById(`like-count-${postId}`).innerText = `${data.likes || 0} likes`;
+      document.getElementById(`dislike-count-${postId}`).innerText = `${data.dislikes || 0} dislikes`;
+    } else {
+      throw new Error('Failed to dislike post');
+    }
+  } catch (error) {
+    console.error('Error disliking post:', error);
   }
 }

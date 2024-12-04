@@ -31,7 +31,11 @@ export class API {
     this.app.put('/posts/:postId/comments/:id', authenticateToken, this.updateComment.bind(this));
     this.app.delete('/posts/:postId/comments/:id', authenticateToken, this.deleteComment.bind(this));
 
-    // In der API-Klasse aktivieren
+    // Like Routes
+    this.app.post('/posts/:id/like', authenticateToken, this.likePost.bind(this));
+    this.app.post('/posts/:id/dislike', authenticateToken, this.dislikePost.bind(this));
+
+
     this.app.use(this.disableCache);
   }
 
@@ -220,7 +224,83 @@ export class API {
       res.status(500).json({ message: 'Error deleting comment' });
     }
   }
+
+  // Like eines Posts
+  private async likePost(req: AuthenticatedRequest, res: Response) {
+    const postId = Number(req.params.id);
   
+    if (!postId || isNaN(postId)) {
+      return res.status(400).json({ message: 'Invalid post ID' });
+    }
+  
+    if (!req.user || !req.user.id) {
+      return res.status(401).json({ message: 'Unauthorized' });
+    }
+  
+    try {
+      const query = `
+        INSERT INTO likes (post_id, user_id, type) 
+        VALUES (?, ?, 'like')
+        ON DUPLICATE KEY UPDATE type = 'like'
+      `;
+      await this.db.executeSQL(query, [postId, req.user.id]);
+      res.status(200).json({ message: 'Post liked' });
+    } catch (error) {
+      console.error('Error liking post:', error);
+      res.status(500).json({ message: 'Error liking post' });
+    }
+  }
+  
+  private async dislikePost(req: AuthenticatedRequest, res: Response) {
+    const postId = Number(req.params.id);
+  
+    if (!postId || isNaN(postId)) {
+      return res.status(400).json({ message: 'Invalid post ID' });
+    }
+  
+    if (!req.user || !req.user.id) {
+      return res.status(401).json({ message: 'Unauthorized' });
+    }
+  
+    try {
+      const query = `
+        INSERT INTO likes (post_id, user_id, type) 
+        VALUES (?, ?, 'dislike')
+        ON DUPLICATE KEY UPDATE type = 'dislike'
+      `;
+      await this.db.executeSQL(query, [postId, req.user.id]);
+      res.status(200).json({ message: 'Post disliked' });
+    } catch (error) {
+      console.error('Error disliking post:', error);
+      res.status(500).json({ message: 'Error disliking post' });
+    }
+  }  
+
+// Abrufen von Like- und Dislike-Anzahl
+  private async getLikes(req: AuthenticatedRequest, res: Response) {
+    const postId = Number(req.params.id);
+
+    if (!postId) {
+      return res.status(400).json({ message: 'Invalid post ID' });
+    }
+
+    try {
+      const query = `
+        SELECT 
+          SUM(CASE WHEN type = 'like' THEN 1 ELSE 0 END) AS likes,
+          SUM(CASE WHEN type = 'dislike' THEN 1 ELSE 0 END) AS dislikes
+        FROM likes
+        WHERE post_id = ?
+      `;
+      const result = (await this.db.executeSQL(query, [postId])) as RowDataPacket[];
+      res.json(result);
+    } catch (error) {
+      console.error('Error fetching likes:', error);
+      res.status(500).json({ message: 'Error fetching likes' });
+    }
+  }
+
+    
   // --- Authentication ---
   private async registerUser(req: Request, res: Response) {
     const { username, password } = req.body;
