@@ -1,3 +1,25 @@
+// Force redirect to /login if on the root page
+if (window.location.pathname === '/') {
+    window.location.href = '/login';
+}
+
+// Verify token
+const token = localStorage.getItem('token');
+
+if (!token) {
+    // If no token, ensure we're on the login page
+    if (window.location.pathname !== '/login') {
+        window.location.href = '/login';
+    }
+} else {
+    // If we have a token, ensure we're not on the login page
+    if (window.location.pathname === '/login') {
+        window.location.href = '/';  // Redirect to the home page (or wherever appropriate)
+    }
+}
+
+
+/*
 if (location.host.includes('localhost')) {
   // Load livereload script if we are on localhost
   document.write(
@@ -22,3 +44,4 @@ if (!token) {
 }
 
 console.log('This is a Test')
+*/
