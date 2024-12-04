@@ -83,6 +83,8 @@ async function createPost(event) {
 // Render Posts
 function renderPosts(posts) {
   const postsContainer = document.getElementById('postsContainer');
+  if (!postsContainer) return;
+
   postsContainer.innerHTML = posts.map(post => `
     <div class="bg-white p-4 rounded shadow">
       <div class="flex justify-between items-center mb-2">
@@ -109,7 +111,7 @@ function renderPosts(posts) {
       <div class="mt-6">
         <h3 class="text-lg font-bold mb-2">Comments</h3>
         <div id="commentsContainer-${post.id}" class="space-y-2"></div>
-        <form onclick="createComment(event, ${post.id})" class="mt-2">
+        <form id="commentForm-${post.id}" class="mt-2">
           <textarea id="commentContent-${post.id}" class="w-full p-2 border rounded" placeholder="Write a comment..."></textarea>
           <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded mt-2">Add Comment</button>
         </form>
@@ -117,8 +119,65 @@ function renderPosts(posts) {
     </div>
   `).join('');
 
+  posts.forEach(post => {
+    const postId = post.id;
+    const commentForm = document.getElementById(`commentForm-${post.id}`);
+    if (commentForm) {
+      commentForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const textarea = document.getElementById(`commentContent-${post.id}`);
+        const commentsContainer = document.getElementById(`commentsContainer-${post.id}`);
+        if (textarea && commentsContainer) {
+          // Get the comment text
+          const commentText = textarea.value;
+
+          if (commentText.trim() !== "") {
+            // Create a new comment element
+            const commentElement = document.createElement('div');
+            commentElement.className = 'bg-gray-100 p-2 rounded shadow';
+            commentElement.textContent = commentText;
+
+            // Append the comment to the comments container
+            commentsContainer.appendChild(commentElement);
+
+          if (!commentText) {
+            alert('Comment content cannot be empty!');
+            return;
+          }
+          console.log(commentText);
+
+          const token = localStorage.getItem('token');
+          try {
+            const response = await fetch(`${API_BASE_URL}/posts/${postId}/comments`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token}`,
+              },
+              body: JSON.stringify({ content: commentText }),
+            });
+        
+            if (response.ok) {
+              document.getElementById(`commentContent-${postId}`).value = '';              
+              // Neuladen der Posts nach erfolgreichem Erstellen
+              loadComments(postId);
+              // Clear the textarea
+              textarea.value = '';
+            } else {
+              throw new Error(await response.text());
+            }
+          } catch (err) {
+            console.error('Error creating comment:', err);
+            alert('Failed to create comment.');
+          }          
+        }
+        }
+      });
+    }
+  });
+
   // Lade Kommentare für jeden Post
-  posts.forEach(post => loadComments(post.id));
+  //posts.forEach(post => loadComments(post.id));
 }
 
 // Edit Post
@@ -195,7 +254,7 @@ async function loadComments(postId) {
 }
 
 // Render Comments
-function renderComments(postId, comments) {
+ function renderComments(postId, comments) {
   const commentsContainer = document.getElementById(`commentsContainer-${postId}`);
   if (!commentsContainer) {
     console.error(`Comments container for postId ${postId} not found.`);
@@ -217,40 +276,7 @@ function renderComments(postId, comments) {
   `).join('');
 }
 
-// Create Comment
-async function createComment(event, postId) {
-  event.preventDefault();
-  const content = document.getElementById(`commentContent-${postId}`).value;
-
-  if (!content) {
-    alert('Comment content cannot be empty!');
-    return;
-  }
-
-  const token = localStorage.getItem('token');
-  try {
-    const response = await fetch(`${API_BASE_URL}/posts/${postId}/comments`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ content }),
-    });
-
-    if (response.ok) {
-      document.getElementById(`commentContent-${postId}`).value = '';
-      loadComments(postId);
-    } else {
-      throw new Error(await response.text());
-    }
-  } catch (err) {
-    console.error('Error creating comment:', err);
-    alert('Failed to create comment.');
-  }
-}
-
-// Edit Comment
+ // Edit Comment
 async function editComment(postId, commentId, oldContent) {
   const newContent = prompt('Edit your comment:', oldContent);
   if (!newContent) return;

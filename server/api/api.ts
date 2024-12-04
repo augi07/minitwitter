@@ -125,6 +125,7 @@ export class API {
   // --- Comment Functions ---
   private async createComment(req: AuthenticatedRequest, res: Response) {
     const postId = Number(req.params.postId);
+    const userId = req.user?.id; 
     const { content } = req.body;
 
     console.log('Create Comment - Received POST Request'); // Log hinzufügen
@@ -141,11 +142,8 @@ export class API {
     }
 
     try {
-        const query = `
-          INSERT INTO comments (post_id, user_id, content, created_at)
-          VALUES (?, ?, ?, NOW())
-        `;
-        const result = await this.db.executeSQL<ResultSetHeader>(query, [postId, req.user?.id, content]);
+        const query = `INSERT INTO comments (post_id, user_id, content, created_at) VALUES (?, ?, ?, NOW())`;
+        const result = await this.db.executeSQL<ResultSetHeader>(query, [postId, userId, content]);
 
         console.log('Comment Created Successfully - ID:', result.insertId); // Log hinzufügen
         res.status(201).json({ message: 'Comment created', commentId: result.insertId });
@@ -153,6 +151,7 @@ export class API {
         console.error('Error creating comment:', error); // Log hinzufügen
         res.status(500).json({ message: 'Error creating comment' });
     }
+   
   }
 
   //get commets
