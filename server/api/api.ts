@@ -1,4 +1,4 @@
-import { Request, Response, Express } from 'express';
+import { Request, Response, Express, NextFunction } from 'express';
 import { ResultSetHeader } from 'mysql2/promise';
 import { RowDataPacket } from 'mysql2';
 import bcrypt from 'bcrypt';
@@ -26,10 +26,13 @@ export class API {
     this.app.delete('/posts/:id', authenticateToken, this.deletePost.bind(this));
 
     // Comment Routes
-    this.app.post('/posts/:postId/comments', authenticateToken, this.createComment.bind(this));
     this.app.get('/posts/:postId/comments', authenticateToken, this.getComments.bind(this));
+    this.app.post('/posts/:postId/comments', authenticateToken, this.createComment.bind(this));   
     this.app.put('/posts/:postId/comments/:id', authenticateToken, this.updateComment.bind(this));
     this.app.delete('/posts/:postId/comments/:id', authenticateToken, this.deleteComment.bind(this));
+
+    // In der API-Klasse aktivieren
+    this.app.use(this.disableCache);
   }
 
   // --- Utility Functions ---
@@ -117,31 +120,39 @@ export class API {
 
   // --- Comment Functions ---
   private async createComment(req: AuthenticatedRequest, res: Response) {
-    const postId = Number(req.params.postId); // Konvertiere postId zu einer Zahl
+    const postId = Number(req.params.postId);
     const { content } = req.body;
 
-    if (!this.validateId(postId)) { // Überprüfe, ob postId gültig ist
-      return res.status(400).json({ message: 'Invalid post ID' });
+    console.log('Create Comment - Received POST Request'); // Log hinzufügen
+    console.log('Post ID:', postId, 'Content:', content); // Log hinzufügen
+
+    if (!this.validateId(postId)) {
+        console.error('Invalid Post ID:', postId); // Log hinzufügen
+        return res.status(400).json({ message: 'Invalid post ID' });
     }
 
     if (!content || typeof content !== 'string') {
-      return res.status(400).json({ message: 'Invalid content' });
+        console.error('Invalid Content:', content); // Log hinzufügen
+        return res.status(400).json({ message: 'Content cannot be empty' });
     }
 
     try {
-      const query = `
-        INSERT INTO comments (tweet_id, user_id, content, created_at)
-        VALUES (?, ?, ?, NOW())
-      `;
-      const result = await this.db.executeSQL<ResultSetHeader>(query, [postId, req.user?.id, content]);
-      res.status(201).json({ message: 'Comment created', commentId: result.insertId });
+        const query = `
+          INSERT INTO comments (tweet_id, user_id, content, created_at)
+          VALUES (?, ?, ?, NOW())
+        `;
+        const result = await this.db.executeSQL<ResultSetHeader>(query, [postId, req.user?.id, content]);
+
+        console.log('Comment Created Successfully - ID:', result.insertId); // Log hinzufügen
+        res.status(201).json({ message: 'Comment created', commentId: result.insertId });
     } catch (error) {
-      console.error('Error creating comment:', error);
-      res.status(500).json({ message: 'Error creating comment' });
+        console.error('Error creating comment:', error); // Log hinzufügen
+        res.status(500).json({ message: 'Error creating comment' });
     }
   }
-  
 
+  //get commets
+  
   private async getComments(req: AuthenticatedRequest, res: Response) {
     const { postId } = req.params;
 
@@ -209,7 +220,7 @@ export class API {
       res.status(500).json({ message: 'Error deleting comment' });
     }
   }
-
+  
   // --- Authentication ---
   private async registerUser(req: Request, res: Response) {
     const { username, password } = req.body;
@@ -261,5 +272,13 @@ export class API {
       console.error('Error logging in:', error);
       res.status(500).send('Error logging in');
     }
+  }
+
+  public disableCache(req: Request, res: Response, next: NextFunction) {
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.set('Pragma', 'no-cache');
+    res.set('Expires', '0');
+    res.set('Surrogate-Control', 'no-store');
+    next();
   }
 }
